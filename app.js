@@ -9,6 +9,8 @@ app.use(
     cors({
         origin: [
             "http://localhost:3000",
+            "https://farmix-web3bytes.vercel.app",
+            "https://main.d1mk2y9g4ss2pn.amplifyapp.com"
         ],
         methods: ["POST", "GET", "HEAD", "PUT", "DELETE", "PATCH"],
         credentials: true,
@@ -16,7 +18,7 @@ app.use(
 );
 
 app.use(express.json());
-const PORT = 5000;
+const PORT = process.env.PORT || 8081;
 
 const calculateArraySimilarity = (array1, array2) => {
   if (!array1.length || !array2.length) return { similarity: 0, common: [] }; // Return 0 if either array is empty
