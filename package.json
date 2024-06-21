@@ -17,6 +17,7 @@
   "homepage": "https://github.com/abhishekb740/farmix-server#readme",
   "description": "",
   "dependencies": {
+    "@covalenthq/client-sdk": "^1.0.2",
     "express": "^4.19.2",
     "nodemon": "^3.1.4"
   }
