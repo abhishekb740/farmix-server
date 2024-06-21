@@ -1,3 +1,5 @@
-import { CovalentClient } from "@covalenthq/client-sdk";
+const  { CovalentClient } = require("@covalenthq/client-sdk");
 
-export const client = new CovalentClient(`${process.env.COVALENT_API_KEY}`);
+const client = new CovalentClient(`${process.env.COVALENT_API_KEY}`);
+
+module.exports = { client };
