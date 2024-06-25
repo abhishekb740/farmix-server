@@ -183,11 +183,7 @@ const getFollowingsProfileDetails = async (address) => {
 
 const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
   const primaryAddress = await getUserAddressFromFCUsername(primaryUsername);
-  const secondaryAddress = await getUserAddressFromFCUsername(
-    secondaryUsername
-  );
-
-  console.log(primaryAddress, secondaryAddress);
+  const secondaryAddress = await getUserAddressFromFCUsername(secondaryUsername);
 
   if (!primaryAddress || !secondaryAddress) {
     console.error("One or both usernames did not resolve to addresses.");
@@ -197,30 +193,17 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
   const primaryNftData = await getAllNFTsForAddress(primaryAddress, client);
   const secondaryNftData = await getAllNFTsForAddress(secondaryAddress, client);
 
-//   console.log(primaryNftData);
-
   const primaryTokenData = await getAllTokensForAddress(primaryAddress, client);
-  const secondaryTokenData = await getAllTokensForAddress(
-    secondaryAddress,
-    client
-  );
+  const secondaryTokenData = await getAllTokensForAddress(secondaryAddress, client);
 
-  const primaryFollowingData = await getFollowingsProfileDetails(
-    primaryAddress
-  );
-  const secondaryFollowingData = await getFollowingsProfileDetails(
-    secondaryAddress
-  );
+  const primaryFollowingData = await getFollowingsProfileDetails(primaryAddress);
+  const secondaryFollowingData = await getFollowingsProfileDetails(secondaryAddress);
 
   const primaryNfts = primaryNftData.length
-    ? primaryNftData
-        .map((item) => item.nft_data?.[0]?.external_data?.image)
-        .filter((image) => image)
+    ? primaryNftData.map((item) => item.nft_data?.[0]?.external_data?.image).filter((image) => image)
     : [];
   const secondaryNfts = secondaryNftData.length
-    ? secondaryNftData
-        .map((item) => item.nft_data?.[0]?.external_data?.image)
-        .filter((image) => image)
+    ? secondaryNftData.map((item) => item.nft_data?.[0]?.external_data?.image).filter((image) => image)
     : [];
 
   const primaryTokens = primaryTokenData.length
@@ -230,28 +213,17 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
     ? secondaryTokenData.map((item) => item.contract_ticker_symbol)
     : [];
 
-  const nftSimilarityResult = calculateArraySimilarity(
-    primaryNfts,
-    secondaryNfts
-  );
-  const tokenSimilarityResult = calculateArraySimilarity(
-    primaryTokens,
-    secondaryTokens
-  );
-  const followingSimilarityResult = calculateObjectArraySimilarity(
-    primaryFollowingData,
-    secondaryFollowingData,
-    "username"
-  );
+  const nftSimilarityResult = calculateArraySimilarity(primaryNfts, secondaryNfts);
+  const tokenSimilarityResult = calculateArraySimilarity(primaryTokens, secondaryTokens);
+  const followingSimilarityResult = calculateObjectArraySimilarity(primaryFollowingData, secondaryFollowingData, "username");
 
-  const validSimilarities = [
+  const similarities = [
     nftSimilarityResult.similarity,
     tokenSimilarityResult.similarity,
     followingSimilarityResult.similarity,
-  ].filter((similarity) => similarity > 0);
-  const similarityScore = validSimilarities.length
-    ? validSimilarities.reduce((a, b) => a + b) / validSimilarities.length
-    : 0;
+  ];
+
+  const similarityScore = similarities.reduce((a, b) => a + b, 0) / similarities.length;
 
   return {
     similarityScore,
