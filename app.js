@@ -6,15 +6,15 @@ const cors = require("cors");
 config();
 
 app.use(
-    cors({
-        origin: [
-            "http://localhost:3000",
-            "https://farmix-web3bytes.vercel.app",
-            "https://main.d1mk2y9g4ss2pn.amplifyapp.com"
-        ],
-        methods: ["POST", "GET", "HEAD", "PUT", "DELETE", "PATCH"],
-        credentials: true,
-    })
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://farmix-web3bytes.vercel.app",
+      "https://main.d1mk2y9g4ss2pn.amplifyapp.com",
+    ],
+    methods: ["POST", "GET", "HEAD", "PUT", "DELETE", "PATCH"],
+    credentials: true,
+  })
 );
 
 app.use(express.json());
@@ -183,27 +183,51 @@ const getFollowingsProfileDetails = async (address) => {
 
 const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
   const primaryAddress = await getUserAddressFromFCUsername(primaryUsername);
-  const secondaryAddress = await getUserAddressFromFCUsername(secondaryUsername);
+  const secondaryAddress = await getUserAddressFromFCUsername(
+    secondaryUsername
+  );
 
-  if (!primaryAddress || !secondaryAddress) {
-    console.error("One or both usernames did not resolve to addresses.");
-    return 0;
+  console.log(secondaryUsername, secondaryAddress);
+
+  if (!primaryAddress) {
+    throw new Error(
+      `Primary username "${primaryUsername}" not found on Farcaster.`
+    );
   }
+
+  if (!secondaryAddress) {
+    throw new Error(
+      `Secondary username "${secondaryUsername}" not found on Farcaster.`
+    );
+  }
+
+  console.log("We are here");
 
   const primaryNftData = await getAllNFTsForAddress(primaryAddress, client);
   const secondaryNftData = await getAllNFTsForAddress(secondaryAddress, client);
 
   const primaryTokenData = await getAllTokensForAddress(primaryAddress, client);
-  const secondaryTokenData = await getAllTokensForAddress(secondaryAddress, client);
+  const secondaryTokenData = await getAllTokensForAddress(
+    secondaryAddress,
+    client
+  );
 
-  const primaryFollowingData = await getFollowingsProfileDetails(primaryAddress);
-  const secondaryFollowingData = await getFollowingsProfileDetails(secondaryAddress);
+  const primaryFollowingData = await getFollowingsProfileDetails(
+    primaryAddress
+  );
+  const secondaryFollowingData = await getFollowingsProfileDetails(
+    secondaryAddress
+  );
 
   const primaryNfts = primaryNftData.length
-    ? primaryNftData.map((item) => item.nft_data?.[0]?.external_data?.image).filter((image) => image)
+    ? primaryNftData
+        .map((item) => item.nft_data?.[0]?.external_data?.image)
+        .filter((image) => image)
     : [];
   const secondaryNfts = secondaryNftData.length
-    ? secondaryNftData.map((item) => item.nft_data?.[0]?.external_data?.image).filter((image) => image)
+    ? secondaryNftData
+        .map((item) => item.nft_data?.[0]?.external_data?.image)
+        .filter((image) => image)
     : [];
 
   const primaryTokens = primaryTokenData.length
@@ -213,9 +237,19 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
     ? secondaryTokenData.map((item) => item.contract_ticker_symbol)
     : [];
 
-  const nftSimilarityResult = calculateArraySimilarity(primaryNfts, secondaryNfts);
-  const tokenSimilarityResult = calculateArraySimilarity(primaryTokens, secondaryTokens);
-  const followingSimilarityResult = calculateObjectArraySimilarity(primaryFollowingData, secondaryFollowingData, "username");
+  const nftSimilarityResult = calculateArraySimilarity(
+    primaryNfts,
+    secondaryNfts
+  );
+  const tokenSimilarityResult = calculateArraySimilarity(
+    primaryTokens,
+    secondaryTokens
+  );
+  const followingSimilarityResult = calculateObjectArraySimilarity(
+    primaryFollowingData,
+    secondaryFollowingData,
+    "username"
+  );
 
   const similarities = [
     nftSimilarityResult.similarity,
@@ -223,7 +257,8 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
     followingSimilarityResult.similarity,
   ];
 
-  const similarityScore = similarities.reduce((a, b) => a + b, 0) / similarities.length;
+  const similarityScore =
+    similarities.reduce((a, b) => a + b, 0) / similarities.length;
 
   return {
     similarityScore,
@@ -246,7 +281,6 @@ app.post("/calculateSimilarity", async (req, res) => {
 
     console.log(response);
     return res.status(200).json(response);
-    
   } catch (err) {
     console.log(err);
   }
