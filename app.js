@@ -11,6 +11,7 @@ app.use(
       "http://localhost:3000",
       "https://farmix-web3bytes.vercel.app",
       "https://main.d1mk2y9g4ss2pn.amplifyapp.com",
+      "https://www.farmix.online"
     ],
     methods: ["POST", "GET", "HEAD", "PUT", "DELETE", "PATCH"],
     credentials: true,
