@@ -6,15 +6,16 @@ const cors = require("cors");
 config();
 
 app.use(
-    cors({
-        origin: [
-            "http://localhost:3000",
-            "https://farmix-web3bytes.vercel.app",
-            "https://main.d1mk2y9g4ss2pn.amplifyapp.com"
-        ],
-        methods: ["POST", "GET", "HEAD", "PUT", "DELETE", "PATCH"],
-        credentials: true,
-    })
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://farmix-web3bytes.vercel.app",
+      "https://main.d1mk2y9g4ss2pn.amplifyapp.com",
+      "https://farmix.online"
+    ],
+    methods: ["POST", "GET", "HEAD", "PUT", "DELETE", "PATCH"],
+    credentials: true,
+  })
 );
 
 app.use(express.json());
@@ -185,6 +186,7 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
     const primaryAddress = await getUserAddressFromFCUsername(primaryUsername);
     const secondaryAddress = await getUserAddressFromFCUsername(secondaryUsername);
 
+<<<<<<< HEAD
     if (!primaryAddress) {
         throw new Error(`Primary username "${primaryUsername}" not found on Farcaster.`);
     }
@@ -203,6 +205,32 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
         secondaryAddress,
         client
     );
+=======
+  console.log(secondaryUsername, secondaryAddress);
+
+  if (!primaryAddress) {
+    throw new Error(
+      `Primary username "${primaryUsername}" not found on Farcaster.`
+    );
+  }
+
+  if (!secondaryAddress) {
+    throw new Error(
+      `Secondary username "${secondaryUsername}" not found on Farcaster.`
+    );
+  }
+
+  console.log("We are here");
+
+  const primaryNftData = await getAllNFTsForAddress(primaryAddress, client);
+  const secondaryNftData = await getAllNFTsForAddress(secondaryAddress, client);
+
+  const primaryTokenData = await getAllTokensForAddress(primaryAddress, client);
+  const secondaryTokenData = await getAllTokensForAddress(
+    secondaryAddress,
+    client
+  );
+>>>>>>> 925bd14957921992e377c907dda7540c7be4481b
 
     const primaryFollowingData = await getFollowingsProfileDetails(
         primaryAddress
@@ -243,6 +271,7 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
         "username"
     );
 
+<<<<<<< HEAD
     const validSimilarities = [
         nftSimilarityResult.similarity,
         tokenSimilarityResult.similarity,
@@ -251,6 +280,16 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
     const similarityScore = validSimilarities.length
         ? validSimilarities.reduce((a, b) => a + b) / validSimilarities.length
         : 0;
+=======
+  const similarities = [
+    nftSimilarityResult.similarity,
+    tokenSimilarityResult.similarity,
+    followingSimilarityResult.similarity,
+  ];
+
+  const similarityScore =
+    similarities.reduce((a, b) => a + b, 0) / similarities.length;
+>>>>>>> 925bd14957921992e377c907dda7540c7be4481b
 
     return {
         similarityScore,
@@ -271,6 +310,7 @@ app.post("/calculateSimilarity", async (req, res) => {
             secondaryUsername
         );
 
+<<<<<<< HEAD
         console.log(response);
         return res.status(200).json(response);
 
@@ -278,6 +318,13 @@ app.post("/calculateSimilarity", async (req, res) => {
         console.log(err);
         return res.status(404).json({ error: err.message });
       }
+=======
+    console.log(response);
+    return res.status(200).json(response);
+  } catch (err) {
+    console.log(err);
+  }
+>>>>>>> 925bd14957921992e377c907dda7540c7be4481b
 });
 
 app.listen(PORT, () => {
