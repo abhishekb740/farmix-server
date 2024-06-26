@@ -186,26 +186,6 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
     const primaryAddress = await getUserAddressFromFCUsername(primaryUsername);
     const secondaryAddress = await getUserAddressFromFCUsername(secondaryUsername);
 
-<<<<<<< HEAD
-    if (!primaryAddress) {
-        throw new Error(`Primary username "${primaryUsername}" not found on Farcaster.`);
-    }
-
-    if (!secondaryAddress) {
-        throw new Error(`Secondary username "${secondaryUsername}" not found on Farcaster.`);
-    }
-
-    const primaryNftData = await getAllNFTsForAddress(primaryAddress, client);
-    const secondaryNftData = await getAllNFTsForAddress(secondaryAddress, client);
-
-    //   console.log(primaryNftData);
-
-    const primaryTokenData = await getAllTokensForAddress(primaryAddress, client);
-    const secondaryTokenData = await getAllTokensForAddress(
-        secondaryAddress,
-        client
-    );
-=======
   console.log(secondaryUsername, secondaryAddress);
 
   if (!primaryAddress) {
@@ -230,7 +210,6 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
     secondaryAddress,
     client
   );
->>>>>>> 925bd14957921992e377c907dda7540c7be4481b
 
     const primaryFollowingData = await getFollowingsProfileDetails(
         primaryAddress
@@ -271,16 +250,6 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
         "username"
     );
 
-<<<<<<< HEAD
-    const validSimilarities = [
-        nftSimilarityResult.similarity,
-        tokenSimilarityResult.similarity,
-        followingSimilarityResult.similarity,
-    ].filter((similarity) => similarity > 0);
-    const similarityScore = validSimilarities.length
-        ? validSimilarities.reduce((a, b) => a + b) / validSimilarities.length
-        : 0;
-=======
   const similarities = [
     nftSimilarityResult.similarity,
     tokenSimilarityResult.similarity,
@@ -289,7 +258,6 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
 
   const similarityScore =
     similarities.reduce((a, b) => a + b, 0) / similarities.length;
->>>>>>> 925bd14957921992e377c907dda7540c7be4481b
 
     return {
         similarityScore,
@@ -310,21 +278,11 @@ app.post("/calculateSimilarity", async (req, res) => {
             secondaryUsername
         );
 
-<<<<<<< HEAD
-        console.log(response);
-        return res.status(200).json(response);
-
-    } catch (err) {
-        console.log(err);
-        return res.status(404).json({ error: err.message });
-      }
-=======
     console.log(response);
     return res.status(200).json(response);
   } catch (err) {
     console.log(err);
   }
->>>>>>> 925bd14957921992e377c907dda7540c7be4481b
 });
 
 app.listen(PORT, () => {
