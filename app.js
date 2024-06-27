@@ -74,7 +74,7 @@ const getAllTokensForAddress = async (address, client) => {
 const getChannelFollowingsForAddress = async (address) => {
     const query = `query MyQuery {
         FarcasterChannelParticipants(
-        input: {filter: {channelActions: {_eq: follow}, participant: {_in: ["0x7398cb2b2D92c34Eabab9da56F0bB23E790204ee"]}}, blockchain: ALL}
+        input: {filter: {channelActions: {_eq: follow}, participant: {_in: ["${address}"]}}, blockchain: ALL}
         ) 
             {
                 FarcasterChannelParticipant {
