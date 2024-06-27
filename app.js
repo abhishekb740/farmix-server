@@ -6,16 +6,16 @@ const cors = require("cors");
 config();
 
 app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "https://farmix-web3bytes.vercel.app",
-      "https://main.d1mk2y9g4ss2pn.amplifyapp.com",
-      "https://farmix.online"
-    ],
-    methods: ["POST", "GET", "HEAD", "PUT", "DELETE", "PATCH"],
-    credentials: true,
-  })
+    cors({
+        origin: [
+            "http://localhost:3000",
+            "https://farmix-web3bytes.vercel.app",
+            "https://main.d1mk2y9g4ss2pn.amplifyapp.com",
+            "https://farmix.online"
+        ],
+        methods: ["POST", "GET", "HEAD", "PUT", "DELETE", "PATCH"],
+        credentials: true,
+    })
 );
 
 app.use(express.json());
@@ -70,6 +70,28 @@ const getAllTokensForAddress = async (address, client) => {
     );
     return resp.data?.items || [];
 };
+
+const getChannelFollowingsForAddress = async (address) => {
+    const query = `query MyQuery {
+        FarcasterChannelParticipants(input: {filter: {channelActions: {_eq: follow}, participant: {_in: ["0x7398cb2b2d92c34eabab9da56f0bb23e790204ee"]}}, blockchain: ALL, limit: 200}) {
+            FarcasterChannelParticipant {
+            channelId
+            }
+        }
+    }`;
+
+    const response = await fetch("https://api.airstack.xyz/gql", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: process.env.AIRSTACK_API_KEY,
+        },
+        body: JSON.stringify({ query }),
+    });
+
+    const { data } = await response.json();
+    return data.Farcaster.FarcasterChannelParticipants.FarcasterChannelParticipant || [];
+}
 
 const getUserFollowingsForAddress = async (address) => {
     const query = `query {
@@ -186,30 +208,30 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
     const primaryAddress = await getUserAddressFromFCUsername(primaryUsername);
     const secondaryAddress = await getUserAddressFromFCUsername(secondaryUsername);
 
-  console.log(secondaryUsername, secondaryAddress);
+    console.log(secondaryUsername, secondaryAddress);
 
-  if (!primaryAddress) {
-    throw new Error(
-      `Primary username "${primaryUsername}" not found on Farcaster.`
+    if (!primaryAddress) {
+        throw new Error(
+            `Primary username "${primaryUsername}" not found on Farcaster.`
+        );
+    }
+
+    if (!secondaryAddress) {
+        throw new Error(
+            `Secondary username "${secondaryUsername}" not found on Farcaster.`
+        );
+    }
+
+    console.log("We are here");
+
+    const primaryNftData = await getAllNFTsForAddress(primaryAddress, client);
+    const secondaryNftData = await getAllNFTsForAddress(secondaryAddress, client);
+
+    const primaryTokenData = await getAllTokensForAddress(primaryAddress, client);
+    const secondaryTokenData = await getAllTokensForAddress(
+        secondaryAddress,
+        client
     );
-  }
-
-  if (!secondaryAddress) {
-    throw new Error(
-      `Secondary username "${secondaryUsername}" not found on Farcaster.`
-    );
-  }
-
-  console.log("We are here");
-
-  const primaryNftData = await getAllNFTsForAddress(primaryAddress, client);
-  const secondaryNftData = await getAllNFTsForAddress(secondaryAddress, client);
-
-  const primaryTokenData = await getAllTokensForAddress(primaryAddress, client);
-  const secondaryTokenData = await getAllTokensForAddress(
-    secondaryAddress,
-    client
-  );
 
     const primaryFollowingData = await getFollowingsProfileDetails(
         primaryAddress
@@ -217,6 +239,9 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
     const secondaryFollowingData = await getFollowingsProfileDetails(
         secondaryAddress
     );
+
+    const primaryChannelFollowingData = await getChannelFollowingsForAddress(primaryAddress);
+    const secondaryChannelFollowingData = await getChannelFollowingsForAddress(secondaryAddress);
 
     const primaryNfts = primaryNftData.length
         ? primaryNftData
@@ -249,15 +274,21 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
         secondaryFollowingData,
         "username"
     );
+    const channelSimilarityResult = calculateObjectArraySimilarity(
+        primaryChannelFollowingData, 
+        secondaryChannelFollowingData, 
+        "channelId"
+    );
 
-  const similarities = [
-    nftSimilarityResult.similarity,
-    tokenSimilarityResult.similarity,
-    followingSimilarityResult.similarity,
-  ];
+    const similarities = [
+        nftSimilarityResult.similarity,
+        tokenSimilarityResult.similarity,
+        followingSimilarityResult.similarity,
+        channelSimilarityResult.similarity
+    ];
 
-  const similarityScore =
-    similarities.reduce((a, b) => a + b, 0) / similarities.length;
+    const similarityScore =
+        similarities.reduce((a, b) => a + b, 0) / similarities.length;
 
     return {
         similarityScore,
@@ -278,11 +309,11 @@ app.post("/calculateSimilarity", async (req, res) => {
             secondaryUsername
         );
 
-    console.log(response);
-    return res.status(200).json(response);
-  } catch (err) {
-    console.log(err);
-  }
+        console.log(response);
+        return res.status(200).json(response);
+    } catch (err) {
+        console.log(err);
+    }
 });
 
 app.listen(PORT, () => {
