@@ -291,6 +291,7 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
         nftSimilarityResult.similarity,
         tokenSimilarityResult.similarity,
         followingSimilarityResult.similarity,
+        channelSimilarityResult.similarity
     ];
 
     const similarityScore =
