@@ -90,7 +90,7 @@ const getChannelFollowingsForAddress = async (address) => {
     });
 
     const { data } = await response.json();
-    return data.Farcaster.FarcasterChannelParticipants.FarcasterChannelParticipant || [];
+    return data.FarcasterChannelParticipants.FarcasterChannelParticipant || [];
 }
 
 const getUserFollowingsForAddress = async (address) => {
