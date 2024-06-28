@@ -3,6 +3,8 @@ const app = express();
 const { client } = require("./utils/Covalent/covalent");
 const { config } = require("dotenv");
 const cors = require("cors");
+const supabaseClient = require("./utils/Supabase/supabase");
+
 config();
 
 app.use(
