@@ -225,43 +225,56 @@ const updateLeaderboard = async (primaryUsername, secondaryUsername, similarityS
             throw new Error(`Supabase query error: ${error.message}`);
         }
 
+        let digital_twins = [];
+        let similarity_scores = [];
+
+        if (data) {
+            digital_twins = data.digital_twins;
+            similarity_scores = data.similarity_score.map(score => parseFloat(score));
+        }
+
+        // Add new entry or update existing one
+        const existingIndex = digital_twins.indexOf(secondaryUsername);
+        if (existingIndex !== -1) {
+            digital_twins.splice(existingIndex, 1);
+            similarity_scores.splice(existingIndex, 1);
+        }
+
+        digital_twins.push(secondaryUsername);
+        similarity_scores.push(similarityScore);
+
+        // Sort and keep only top 5
+        const combined = digital_twins.map((twin, index) => ({
+            twin,
+            score: similarity_scores[index]
+        }));
+
+        combined.sort((a, b) => b.score - a.score);
+        combined.splice(5); // Keep only top 5
+
+        const updatedDigitalTwins = combined.map(item => item.twin);
+        const updatedSimilarityScores = combined.map(item => item.score.toFixed(2));
+
         if (!data) {
             // Insert new row
             const { error: insertError } = await supabaseClient
                 .from('Leaderboardv2')
                 .insert({
                     username: primaryUsername,
-                    digital_twins: [secondaryUsername],
-                    similarity_score: [similarityScore.toFixed(2)]
+                    digital_twins: updatedDigitalTwins,
+                    similarity_score: updatedSimilarityScores
                 });
             if (insertError) throw new Error(`Supabase insert error: ${insertError.message}`);
         } else {
-            const index = data.digital_twins.indexOf(secondaryUsername);
-            if (index === -1) {
-                // Add new secondary username and score
-                const { error: updateError } = await supabaseClient
-                    .from('Leaderboardv2')
-                    .update({
-                        digital_twins: [...data.digital_twins, secondaryUsername],
-                        similarity_score: [...data.similarity_score, similarityScore.toFixed(2)]
-                    })
-                    .eq('username', primaryUsername);
-                if (updateError) throw new Error(`Supabase update error: ${updateError.message}`);
-            } else {
-                // Update existing score if it has changed
-                const existingScore = parseFloat(data.similarity_score[index]);
-                if (existingScore !== similarityScore) {
-                    const updatedScores = [...data.similarity_score];
-                    updatedScores[index] = similarityScore.toFixed(2);
-                    const { error: updateError } = await supabaseClient
-                        .from('Leaderboardv2')
-                        .update({
-                            similarity_score: updatedScores
-                        })
-                        .eq('username', primaryUsername);
-                    if (updateError) throw new Error(`Supabase update error: ${updateError.message}`);
-                }
-            }
+            // Update existing row
+            const { error: updateError } = await supabaseClient
+                .from('Leaderboardv2')
+                .update({
+                    digital_twins: updatedDigitalTwins,
+                    similarity_score: updatedSimilarityScores
+                })
+                .eq('username', primaryUsername);
+            if (updateError) throw new Error(`Supabase update error: ${updateError.message}`);
         }
     } catch (error) {
         console.error('Error in updateLeaderboard:', error);
@@ -418,19 +431,11 @@ app.post("/getUserLeaderboard", async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
 
-        const combined = data.digital_twins.map((twin, index) => ({
-            digital_twin: twin,
-            similarity_score: parseFloat(data.similarity_score[index])
-        }));
-
-        combined.sort((a, b) => b.similarity_score - a.similarity_score);
-
-        const sortedData = {
-            digital_twins: combined.map(item => item.digital_twin),
-            similarity_score: combined.map(item => item.similarity_score.toFixed(2))
-        };
-
-        return res.status(200).json(sortedData);
+        // Data is already sorted, just return it
+        return res.status(200).json({
+            digital_twins: data.digital_twins,
+            similarity_score: data.similarity_score
+        });
     } catch (err) {
         console.error('Error in /getUserLeaderboard:', err);
         return res.status(500).json({ error: "Internal server error", details: err.message });
