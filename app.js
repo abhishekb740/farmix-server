@@ -3,7 +3,7 @@ const app = express();
 const { client } = require("./utils/Covalent/covalent");
 const { config } = require("dotenv");
 const cors = require("cors");
-const supabaseClient = require("./utils/Supabase/supabase");
+const { supabaseClient } = require("./utils/Supabase/supabase");
 
 config();
 
@@ -213,6 +213,62 @@ const getFollowingsProfileDetails = async (address) => {
         }));
 };
 
+const updateLeaderboard = async (primaryUsername, secondaryUsername, similarityScore) => {
+    try {
+        const { data, error } = await supabaseClient
+            .from('Leaderboardv2')
+            .select('*')
+            .eq('username', primaryUsername)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            throw new Error(`Supabase query error: ${error.message}`);
+        }
+
+        if (!data) {
+            // Insert new row
+            const { error: insertError } = await supabaseClient
+                .from('Leaderboardv2')
+                .insert({
+                    username: primaryUsername,
+                    digital_twins: [secondaryUsername],
+                    similarity_score: [similarityScore.toFixed(2)]
+                });
+            if (insertError) throw new Error(`Supabase insert error: ${insertError.message}`);
+        } else {
+            const index = data.digital_twins.indexOf(secondaryUsername);
+            if (index === -1) {
+                // Add new secondary username and score
+                const { error: updateError } = await supabaseClient
+                    .from('Leaderboardv2')
+                    .update({
+                        digital_twins: [...data.digital_twins, secondaryUsername],
+                        similarity_score: [...data.similarity_score, similarityScore.toFixed(2)]
+                    })
+                    .eq('username', primaryUsername);
+                if (updateError) throw new Error(`Supabase update error: ${updateError.message}`);
+            } else {
+                // Update existing score if it has changed
+                const existingScore = parseFloat(data.similarity_score[index]);
+                if (existingScore !== similarityScore) {
+                    const updatedScores = [...data.similarity_score];
+                    updatedScores[index] = similarityScore.toFixed(2);
+                    const { error: updateError } = await supabaseClient
+                        .from('Leaderboardv2')
+                        .update({
+                            similarity_score: updatedScores
+                        })
+                        .eq('username', primaryUsername);
+                    if (updateError) throw new Error(`Supabase update error: ${updateError.message}`);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error in updateLeaderboard:', error);
+        throw error;
+    }
+};
+
 const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
     const primaryAddress = await getUserAddressFromFCUsername(primaryUsername);
     const secondaryAddress = await getUserAddressFromFCUsername(secondaryUsername);
@@ -233,97 +289,157 @@ const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
 
     console.log("We are here");
 
-    const primaryNftData = await getAllNFTsForAddress(primaryAddress, client);
-    const secondaryNftData = await getAllNFTsForAddress(secondaryAddress, client);
+    try {
+        const primaryNftData = await getAllNFTsForAddress(primaryAddress, client);
+        const secondaryNftData = await getAllNFTsForAddress(secondaryAddress, client);
 
-    const primaryTokenData = await getAllTokensForAddress(primaryAddress, client);
-    const secondaryTokenData = await getAllTokensForAddress(
-        secondaryAddress,
-        client
-    );
+        const primaryTokenData = await getAllTokensForAddress(primaryAddress, client);
+        const secondaryTokenData = await getAllTokensForAddress(
+            secondaryAddress,
+            client
+        );
 
-    const primaryFollowingData = await getFollowingsProfileDetails(
-        primaryAddress
-    );
-    const secondaryFollowingData = await getFollowingsProfileDetails(
-        secondaryAddress
-    );
+        const primaryFollowingData = await getFollowingsProfileDetails(
+            primaryAddress
+        );
+        const secondaryFollowingData = await getFollowingsProfileDetails(
+            secondaryAddress
+        );
 
-    const primaryChannelFollowingData = await getChannelFollowingsForAddress(primaryAddress);
-    const secondaryChannelFollowingData = await getChannelFollowingsForAddress(secondaryAddress);
+        const primaryChannelFollowingData = await getChannelFollowingsForAddress(primaryAddress);
+        const secondaryChannelFollowingData = await getChannelFollowingsForAddress(secondaryAddress);
 
-    const primaryNfts = primaryNftData.length
-        ? primaryNftData
-            .map((item) => item.nft_data?.[0]?.external_data?.image)
-            .filter((image) => image)
-        : [];
-    const secondaryNfts = secondaryNftData.length
-        ? secondaryNftData
-            .map((item) => item.nft_data?.[0]?.external_data?.image)
-            .filter((image) => image)
-        : [];
+        const primaryNfts = primaryNftData.length
+            ? primaryNftData
+                .map((item) => item.nft_data?.[0]?.external_data?.image)
+                .filter((image) => image)
+            : [];
+        const secondaryNfts = secondaryNftData.length
+            ? secondaryNftData
+                .map((item) => item.nft_data?.[0]?.external_data?.image)
+                .filter((image) => image)
+            : [];
 
-    const primaryTokens = primaryTokenData.length
-        ? primaryTokenData.map((item) => item.contract_ticker_symbol)
-        : [];
-    const secondaryTokens = secondaryTokenData.length
-        ? secondaryTokenData.map((item) => item.contract_ticker_symbol)
-        : [];
+        const primaryTokens = primaryTokenData.length
+            ? primaryTokenData.map((item) => item.contract_ticker_symbol)
+            : [];
+        const secondaryTokens = secondaryTokenData.length
+            ? secondaryTokenData.map((item) => item.contract_ticker_symbol)
+            : [];
 
-    const nftSimilarityResult = calculateArraySimilarity(
-        primaryNfts,
-        secondaryNfts
-    );
-    const tokenSimilarityResult = calculateArraySimilarity(
-        primaryTokens,
-        secondaryTokens
-    );
-    const followingSimilarityResult = calculateObjectArraySimilarity(
-        primaryFollowingData,
-        secondaryFollowingData,
-        "username"
-    );
-    const channelSimilarityResult = calculateObjectArraySimilarity(
-        primaryChannelFollowingData, 
-        secondaryChannelFollowingData, 
-        "channelId"
-    );
+        const nftSimilarityResult = calculateArraySimilarity(
+            primaryNfts,
+            secondaryNfts
+        );
+        const tokenSimilarityResult = calculateArraySimilarity(
+            primaryTokens,
+            secondaryTokens
+        );
+        const followingSimilarityResult = calculateObjectArraySimilarity(
+            primaryFollowingData,
+            secondaryFollowingData,
+            "username"
+        );
+        const channelSimilarityResult = calculateObjectArraySimilarity(
+            primaryChannelFollowingData,
+            secondaryChannelFollowingData,
+            "channelId"
+        );
 
-    const similarities = [
-        nftSimilarityResult.similarity,
-        tokenSimilarityResult.similarity,
-        followingSimilarityResult.similarity,
-        channelSimilarityResult.similarity
-    ];
+        const similarities = [
+            nftSimilarityResult.similarity,
+            tokenSimilarityResult.similarity,
+            followingSimilarityResult.similarity,
+            channelSimilarityResult.similarity
+        ];
 
-    const similarityScore =
-        similarities.reduce((a, b) => a + b, 0) / similarities.length;
+        const similarityScore =
+            similarities.reduce((a, b) => a + b, 0) / similarities.length;
 
-    return {
-        similarityScore,
-        commonNFTs: nftSimilarityResult.common,
-        commonTokens: tokenSimilarityResult.common,
-        commonFollowers: followingSimilarityResult.common,
-        commonChannels: channelSimilarityResult.common
-    };
+        return {
+            similarityScore,
+            commonNFTs: nftSimilarityResult.common,
+            commonTokens: tokenSimilarityResult.common,
+            commonFollowers: followingSimilarityResult.common,
+            commonChannels: channelSimilarityResult.common
+        };
+    } catch (error) {
+        console.error('Error in calculateSimilarity:', error);
+        throw error;
+    }
 };
 
 app.post("/calculateSimilarity", async (req, res) => {
     try {
         const { primaryUsername, secondaryUsername } = req.body;
 
-        console.log(primaryUsername, secondaryUsername);
+        if (!primaryUsername || !secondaryUsername) {
+            return res.status(400).json({ error: "Both primaryUsername and secondaryUsername are required" });
+        }
 
-        const response = await calculateSimilarity(
-            primaryUsername,
-            secondaryUsername
-        );
+        console.log(`Calculating similarity between ${primaryUsername} and ${secondaryUsername}`);
 
-        console.log(response);
+        const response = await calculateSimilarity(primaryUsername, secondaryUsername);
+        await updateLeaderboard(primaryUsername, secondaryUsername, response.similarityScore);
+
+        console.log('Similarity calculation completed:', response);
         return res.status(200).json(response);
     } catch (err) {
-        console.log(err);
+        console.error('Error in /calculateSimilarity:', err);
+        if (err.message.includes('not found on Farcaster')) {
+            return res.status(404).json({ error: err.message });
+        }
+        return res.status(500).json({ error: "Internal server error", details: err.message });
     }
+});
+
+app.post("/getUserLeaderboard", async (req, res) => {
+    try {
+        const { username } = req.body;
+
+        if (!username) {
+            return res.status(400).json({ error: "Username is required" });
+        }
+
+        const { data, error } = await supabaseClient
+            .from('Leaderboardv2')
+            .select('digital_twins, similarity_score')
+            .eq('username', username)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ error: "User not found" });
+            }
+            throw new Error(`Supabase query error: ${error.message}`);
+        }
+
+        if (!data) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const combined = data.digital_twins.map((twin, index) => ({
+            digital_twin: twin,
+            similarity_score: parseFloat(data.similarity_score[index])
+        }));
+
+        combined.sort((a, b) => b.similarity_score - a.similarity_score);
+
+        const sortedData = {
+            digital_twins: combined.map(item => item.digital_twin),
+            similarity_score: combined.map(item => item.similarity_score.toFixed(2))
+        };
+
+        return res.status(200).json(sortedData);
+    } catch (err) {
+        console.error('Error in /getUserLeaderboard:', err);
+        return res.status(500).json({ error: "Internal server error", details: err.message });
+    }
+});
+
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ error: "Internal server error", details: err.message });
 });
 
 app.listen(PORT, () => {
