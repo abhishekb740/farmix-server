@@ -7,6 +7,13 @@ const { supabaseClient } = require("./utils/Supabase/supabase");
 
 config();
 
+class UsernameNotFoundError extends Error {
+    constructor(username) {
+        super(`Username "${username}" not found on Farcaster.`);
+        this.name = 'UsernameNotFoundError';
+    }
+}
+
 app.use(
     cors({
         origin: [
@@ -283,21 +290,22 @@ const updateLeaderboard = async (primaryUsername, secondaryUsername, similarityS
 };
 
 const calculateSimilarity = async (primaryUsername, secondaryUsername) => {
-    const primaryAddress = await getUserAddressFromFCUsername(primaryUsername);
-    const secondaryAddress = await getUserAddressFromFCUsername(secondaryUsername);
+    let primaryAddress, secondaryAddress;
+    try {
+        primaryAddress = await getUserAddressFromFCUsername(primaryUsername);
+        secondaryAddress = await getUserAddressFromFCUsername(secondaryUsername);
+    } catch (error) {
+        throw new UsernameNotFoundError(secondaryUsername);
+    }
 
     console.log(secondaryUsername, secondaryAddress);
 
     if (!primaryAddress) {
-        throw new Error(
-            `Primary username "${primaryUsername}" not found on Farcaster.`
-        );
+        throw new UsernameNotFoundError(primaryUsername);
     }
 
     if (!secondaryAddress) {
-        throw new Error(
-            `Secondary username "${secondaryUsername}" not found on Farcaster.`
-        );
+        throw new UsernameNotFoundError(secondaryUsername);
     }
 
     console.log("We are here");
@@ -399,9 +407,15 @@ app.post("/calculateSimilarity", async (req, res) => {
         return res.status(200).json(response);
     } catch (err) {
         console.error('Error in /calculateSimilarity:', err);
-        if (err.message.includes('not found on Farcaster')) {
+
+        if (err instanceof UsernameNotFoundError) {
             return res.status(404).json({ error: err.message });
         }
+
+        if (err.name === 'AbortError' || err.message.includes('timeout')) {
+            return res.status(504).json({ error: 'Request timed out. Please try again later.' });
+        }
+
         return res.status(500).json({ error: "Internal server error", details: err.message });
     }
 });
@@ -444,7 +458,16 @@ app.post("/getUserLeaderboard", async (req, res) => {
 
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
-    res.status(500).json({ error: "Internal server error", details: err.message });
+
+    if (err instanceof UsernameNotFoundError) {
+        return res.status(404).json({ error: err.message });
+    }
+
+    // For any other types of errors
+    res.status(500).json({
+        error: "Internal server error",
+        details: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message
+    });
 });
 
 app.listen(PORT, () => {
